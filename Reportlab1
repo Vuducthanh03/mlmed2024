@@ -1,0 +1,132 @@
+\documentclass{report}
+
+
+% Language setting
+% Replace english' with e.g. spanish' to change the document language
+\usepackage[english]{babel}
+\usepackage{titlesec}
+
+% Redefine the chapter title format to remove "Chapter" word
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries}{\thechapter}{20pt}{\Huge}
+
+% Set page size and margins
+% Replace letterpaper' with a4paper' for UK/EU standard size
+\usepackage[letterpaper,top=2cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}
+
+% Useful packages
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+\usepackage{indentfirst}
+\usepackage{graphicx}
+\graphicspath{{./image}}
+
+\title{ECG Heartbeat Categorization}
+\author{BI12-419 Vu Duc Thanh}
+
+\begin{document}
+\maketitle
+
+\tableofcontents
+
+\chapter{Abstract}
+This dataset includes two sub-collections developed from the renowned datasets in heartbeat classification: the MIT-BIH Arrhythmia Dataset and the PTB Diagnostic ECG Database. Both of them contain an adequate number of samples for training deep neural networks.\\
+\\
+The use of this dataset includes the exploration of heartbeat classification using deep neural networks. The signals correspond to electrocardiogram shapes of heartbeats and have been preprocessed and segmented, with each segment corresponding to a heartbeat.
+
+
+\chapter{Dataset}
+\section{The components}
+This dataset consists of CSV files, each of them featuring a matrix with each row representing an example in that portion of the dataset. The last element of each row indicates which class that example belongs to. In addition, all of the samples have been cropped, downsampled and padded with zeroes where necessary to a fixed dimension of 188.
+\subsection{The Arrhythmia dataset}
+\begin{itemize}
+    \item Number of samples: 109446
+    \item Number of categories: 5. Classnames: ['N': 0, 'S': 1, 'V': 2, 'F': 3, 'Q':, 4]
+    \item Sampling frequency: 125Hz
+    \item Data source: Physionet's MIT-BIH Arrhythimia Dataset
+\end{itemize}
+
+This sub-collection includes 2 CSV files: 'mitbih\_train.csv' as the training set and 'mitbih\_test.csv' as the testing set.\\
+
+The training set has 87552 samples, while the testing set has 21890 samples. There are no missing values and all of the samples have been preprocessed to ensure similar dimensions.
+\subsection{The PTB Diagnostic ECG database}
+\begin{itemize}
+    \item Number of samples: 14552
+    \item Number of categories: 2
+    \item Sampling frequency: 125Hz
+    \item Data source: Physionet's PTB Diagnostic Database
+\end{itemize}
+
+This sub-collection includes 2 CSV files: 'ptbdb\_abnormal.csv' and 'ptbdb\_normal.csv'.\\
+
+The first file contains 10500 samples, while the latter contains 4045 samples. There are no missing values and all of the samples have been preprocessed to ensure similar dimensions.
+
+\chapter{Model implementation}
+Only 'mitbih\_train.csv' and 'mitbih\_test.csv' are utilised for this implementation.
+\section{Data preparation}
+
+Since the last value of each row indicates the class to which each sample belongs, we sliced the last column of each dataset to create the target labels. The remaining data is divided into a training set and a validation set with a ratio of 80/20.\\
+
+By visualizing the samples, we observe that both the training and testing sets are imbalanced, with 82.8\% of the samples being Normal beats (the 'N' class) while the remaining four classes only account for 17.2\%.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=15cm]{image_2024-03-19_133052514.png}\hfill
+    \caption{Data distribution}
+\end{figure}
+\section{Model architecture}
+
+We created a simple neural network using the Sequential class from the Keras library. The model contains two stages and a final fully connected layer to classify the beat types.\\
+
+Since the heartbeat data are 1D signals, we utilize Conv1D layers. The first block contains a Conv1D layer with 64 filters, kernels of size 5x1 and ReLU activation, followed by a MaxPooling1D layer with a pool size of 2. At the end of the block we use a dropout rate of 0.1.\\
+
+The second block contains another Conv1D layer with 128 filters, kernels of size 5x1 and ReLU activation, followed by a MaxPooling1D layer with a pool size of 2. The data will then be flatten before being fit into a fully connected dense layer with 128 neurons. Here we use a dropout rate of 0.2.\\
+
+Finally the final fully connected dense layer with 5 neurons representing 5 classes will be used to classify the heartbeat signals. 
+
+\section{Model training}
+
+Since we only have a training set and a testing set at the beginning, we further split the training set into a smaller training set and an additional validation set with a ratio of 80/20. After this, we are fitting both sets into the model to commence training.\\
+
+We set the model to be trained for 20 epochs with a batch size of 64. We also used ReduceLROnPlateau to monitor the learning rate. 
+
+
+\section{Evaluation and results}
+
+After the training process, we obtained the results as shown in the plots below:
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=15cm]{image_2024-03-19_133307690.png}
+    \caption{Training results}
+\end{figure}
+
+Both the training and validation accuracy increased significantly within the first 5 epochs before gradually improving during the remaining 15 epochs. A similar trend can be seen with both the training and validation loss.\\
+
+At the end of the training process, it is implied from both of the plots that the difference between the training and validation accuracy is relatively small, less than 0.01\% and the same applies for the loss values. This indicates a positive results which shows a low risk of overfitting.\\
+
+
+The performance of the model on the seperated test set is shown below:
+
+\begin{center}
+\begin{tabular}{|c | c | c | c|} 
+ \hline
+ Accuracy & Precision & Recall & F1-score \\ [0.5ex] 
+ \hline\hline
+ 0.98 & 0.93 & 0.85 & 0.88 \\ 
+ \hline
+\end{tabular}
+\end{center}
+
+The confusion matrix of the model:\\
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=15cm]{image_2024-03-20_131143197.png}
+    \caption{Confusion matrix of the custom model}
+\end{figure}
+
+From the matrix, we can see that the Normal beats are correctly classified the most since this class accounts for around 80\% of the data. However, there are also a notable amount of incorrect classifications that are confused with the remaining 4 classes. Also for the remaining 4 classes, the model perform relatively well, as shown by the small number of confused classifications with other classes. In general, the model demonstrated an impressive performance and generalized well on the dataset.
+
+\end{document}
